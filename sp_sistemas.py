@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
-import numpy as np                           # ← ya lo tenías
-# ❌  import plotly.express as px             # ← elimina esta línea
+import numpy as np                         
 
 @st.cache_data
 def load_data():
@@ -21,7 +20,7 @@ def inferir_enfermedad(
     df_symptoms,
     df_prevalence,
     *,
-    epsilon=1e-9        # evita log(0)
+    epsilon=1e-9        
 ):
     """
     Devuelve:
@@ -35,28 +34,25 @@ def inferir_enfermedad(
     for _, row in df_symptoms.iterrows():
         enf = row["diseases"]
 
-        # P(E)  (prevalencia)
         prev = df_prevalence.loc[
             df_prevalence["disease"] == enf, "proporcion"
         ].values
         if prev.size == 0:
-            continue  # si faltara la prevalencia, ignórala
+            continue  #
         log_p = np.log(prev[0] + epsilon)
 
-        # Para cada síntoma de la base (presente o ausente)
         for s in symptoms_cols:
             p_s_e = row[s] if not pd.isna(row[s]) else 0.0
 
-            if s in sintomas_usuario:          # usuario SÍ lo tiene
+            if s in sintomas_usuario:          
                 log_p += np.log(p_s_e + epsilon)
-            else:                              # usuario NO lo tiene
+            else:                             
                 log_p += np.log(1 - p_s_e + epsilon)
 
         log_probs[enf] = log_p
 
-    # ---- Paso de normalización ----
     max_log = max(log_probs.values())
-    probs_raw = {e: np.exp(lp - max_log)          # joint sin normalizar
+    probs_raw = {e: np.exp(lp - max_log)          
                  for e, lp in log_probs.items()}
     total = sum(probs_raw.values())
     probs_norm = {e: p / total for e, p in probs_raw.items()}
@@ -96,8 +92,7 @@ if diagnosticar:
     for col, (enf, pnorm) in zip([col1, col2, col3], top3):
         col.metric(label=f"🩻 {enf}", value=f"{pnorm:.1%}")
 
-    # ---------- NUEVO bloque: gráfica sin Plotly ----------
-    import altair as alt  # ← agrégalo si no lo tienes ya
+    import altair as alt  
 
     df_plot = pd.DataFrame(top3, columns=["Enfermedad", "Probabilidad"])
     df_plot["rank"] = df_plot["Probabilidad"].rank(ascending=False, method="first")
@@ -108,8 +103,6 @@ if diagnosticar:
         y="Probabilidad"
     )
     st.altair_chart(chart, use_container_width=True)
-       # usa el componente nativo de Streamlit
-    # -------------------------------------------------------
 
     with st.expander("📋 Ver detalles completos"):
         df_detalle = pd.DataFrame(
